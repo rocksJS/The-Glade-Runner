@@ -13,59 +13,77 @@ const TEXTURE_SIZE = 64;
 
 // Helper to create color
 const color = (r: number, g: number, b: number) => {
-    return (255 << 24) | (b << 16) | (g << 8) | r;
+    return (255 << 24) | (b << 16) | (g << 8) r;
 };
 
 // Texture generator
 const getTextureColor = (type: number, texX: number, texY: number, side: number): number => {
     let col = 0;
     
+    // Base surface variation
+    const surfaceNoise = ((texX * 37 + texY * 13) % 23) / 23;
+    const crackNoise = ((texX * 11 + texY * 53) % 47) / 47;
+    const largeNoise = (Math.sin(texX * 0.1) * Math.cos(texY * 0.1) + 1) / 2;
+
     // 1: Concrete Slab (Brutalist Maze Style)
     if (type === 1) {
         const seamY = texY % 32 === 0 || texY % 32 === 31;
         const seamX = texX === 0 || texX === 63;
         
         if (seamY || seamX) {
-            col = color(50, 55, 65); // Dark seam
+            col = color(40, 45, 55); 
         } else {
-            const noise = ((texX * 17 + texY * 23) % 19) * 2;
-            const stain = (Math.sin(texX * 0.2) > 0.8) ? 10 : 0;
-            const r = 140 - noise - stain;
-            const g = 145 - noise - stain;
-            const b = 155 - noise - stain;
+            const baseR = 130, baseG = 135, baseB = 145;
+            const dirt = surfaceNoise > 0.8 ? -15 : 0;
+            const stain = largeNoise > 0.7 ? -20 : 0;
+            const crack = (crackNoise > 0.95 && largeNoise < 0.3) ? -40 : 0;
+            
+            const r = Math.max(0, baseR + dirt + stain + crack + surfaceNoise * 10);
+            const g = Math.max(0, baseG + dirt + stain + crack + surfaceNoise * 10);
+            const b = Math.max(0, baseB + dirt + stain + crack + surfaceNoise * 10);
             col = color(r, g, b);
         }
     }
     // 2: Mossy/Old Wall
     else if (type === 2) {
-        const noise = ((texX * 3 + texY * 7) % 13) * 4;
-        const mossNoise = Math.sin(texX * 0.1) + Math.cos(texY * 0.1);
-        if (mossNoise > 0.5) {
-             const greenVar = (texX % 5) * 5;
-             col = color(40 + greenVar, 80 + greenVar, 40);
+        const mossNoise = Math.sin(texX * 0.15 + surfaceNoise) + Math.cos(texY * 0.2 + largeNoise);
+        if (mossNoise > 0.3) {
+             const greenVar = Math.floor(surfaceNoise * 40);
+             const darkVar = largeNoise > 0.5 ? -20 : 0;
+             col = color(Math.max(0, 30 + greenVar + darkVar), Math.max(0, 70 + greenVar + darkVar), Math.max(0, 30 + greenVar + darkVar));
         } else {
-             col = color(80 - noise, 90 - noise, 100 - noise);
+             const r = 70 - surfaceNoise * 20;
+             const g = 80 - surfaceNoise * 20;
+             const b = 90 - surfaceNoise * 20;
+             col = color(r, g, b);
         }
     }
     // 3: Vine Wall
     else if (type === 3) {
         const vineStrand = Math.abs(Math.sin(texX * 0.3) * 10);
-        const isLeaf = ((texY + Math.floor(vineStrand)) % 8) < 5;
+        const isLeaf = ((texY + Math.floor(vineStrand)) % 8) < 6;
         if (isLeaf) {
-             const shade = ((texX * texY) % 3) * 20;
-             col = color(30, 120 + shade, 40);
+             const shade = Math.floor(surfaceNoise * 40);
+             const leafR = 25 + (largeNoise * 10);
+             const leafG = 100 + shade;
+             const leafB = 30 + (largeNoise * 10);
+             col = color(leafR, leafG, leafB);
         } else {
-             col = color(60, 65, 70);
+             col = color(50, 55, 60);
         }
     }
     // 4: Locker (Industrial Metal)
     else if (type === 4) {
         if (texY > 10 && texY < 54 && texY % 6 < 2 && texX > 8 && texX < 56) {
-            col = color(20, 20, 25); 
+            col = color(10, 10, 15); 
         } else {
-            if (Math.random() > 0.98) col = color(100, 60, 50);
-            else col = color(90, 95, 100);
-            if (texX < 4 || texX > 60 || texY < 4 || texY > 60) col = color(60, 65, 70);
+            const rustNoise = ((texX * 23 + texY * 7) % 19) / 19;
+            if (rustNoise > 0.92) col = color(90, 45, 30);
+            else {
+                const shine = surfaceNoise > 0.9 ? 15 : 0;
+                col = color(80 + shine, 85 + shine, 90 + shine);
+            }
+            if (texX < 4 || texX > 60 || texY < 4 || texY > 60) col = color(50, 55, 60);
         }
     }
     else {
@@ -73,10 +91,10 @@ const getTextureColor = (type: number, texX: number, texY: number, side: number)
     }
 
     if (side === 1) {
-        const r = (col & 0xFF) >> 1;
-        const g = ((col >> 8) & 0xFF) >> 1;
-        const b = ((col >> 16) & 0xFF) >> 1;
-        return (255 << 24) | (b << 16) | (g << 8) | r;
+        const r = (col & 0xFF) * 0.6;
+        const g = ((col >> 8) & 0xFF) * 0.6;
+        const b = ((col >> 16) & 0xFF) * 0.6;
+        return (255 << 24) | (Math.floor(b) << 16) | (Math.floor(g) << 8) | Math.floor(r);
     }
     return col;
 };
@@ -89,7 +107,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, setGameState, onUpda
     x: SPAWN_POS.x, 
     y: SPAWN_POS.y,
     dirX: 1, dirY: 0,
-    planeX: 0, planeY: FOV, // Updated FOV from constants
+    planeX: 0, planeY: FOV, 
     z: 0,
     pitch: 0,
     health: 100,
@@ -106,20 +124,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, setGameState, onUpda
     map: JSON.parse(JSON.stringify(INITIAL_MAP)),
     floorMap: [],
     ceilMap: [],
-    entities: JSON.parse(JSON.stringify(INITIAL_ENTITIES)) // Use generated entities
+    entities: JSON.parse(JSON.stringify(INITIAL_ENTITIES)) 
   });
 
   const keysPressed = useRef<{ [key: string]: boolean }>({});
   const lastMessage = useRef<string | null>(null);
   const messageTimer = useRef<number>(0);
-
-  useEffect(() => {
-    // Reset on game start
-    if (gameState === GameState.PLAYING) {
-       // Optional: Reset player pos if coming from menu fresh?
-       // For now, keep state persistence or manual reset if needed.
-    }
-  }, [gameState]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => { keysPressed.current[e.code] = true; };
@@ -191,8 +201,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, setGameState, onUpda
       if (keysPressed.current['KeyE']) {
         p.isInLocker = false;
         setMessage("Escaped the Box. Stay quiet.");
-        // We are already at spawn pos, just set state. 
-        // Logic ensures we don't clip into wall if map gen is correct.
       }
     }
 
@@ -213,15 +221,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, setGameState, onUpda
         p.noiseLevel = p.noiseLevel * 0.9;
       }
 
-      // Collision
       const canWalkOver = p.z > 0.8;
       if (!canWalkOver) {
-        if (w.map[Math.floor(p.x + dx * 3)][Math.floor(p.y)] === 0 || 
-            w.map[Math.floor(p.x + dx * 3)][Math.floor(p.y)] === 4 ||
-            w.map[Math.floor(p.x + dx * 3)][Math.floor(p.y)] === 5) p.x += dx;
-        if (w.map[Math.floor(p.x)][Math.floor(p.y + dy * 3)] === 0 || 
-            w.map[Math.floor(p.x)][Math.floor(p.y + dy * 3)] === 4 ||
-            w.map[Math.floor(p.x)][Math.floor(p.y + dy * 3)] === 5) p.y += dy;
+        // More lenient collision for wider halls
+        if (w.map[Math.floor(p.x + dx * 2)][Math.floor(p.y)] === 0 || 
+            w.map[Math.floor(p.x + dx * 2)][Math.floor(p.y)] === 4 ||
+            w.map[Math.floor(p.x + dx * 2)][Math.floor(p.y)] === 5) p.x += dx;
+        if (w.map[Math.floor(p.x)][Math.floor(p.y + dy * 2)] === 0 || 
+            w.map[Math.floor(p.x)][Math.floor(p.y + dy * 2)] === 4 ||
+            w.map[Math.floor(p.x)][Math.floor(p.y + dy * 2)] === 5) p.y += dy;
 
         const mapX = Math.floor(p.x);
         const mapY = Math.floor(p.y);
@@ -231,7 +239,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, setGameState, onUpda
              p.noiseLevel = 1.0;
         }
         
-        // Check for climbable walls
         const frontX = Math.floor(p.x + p.dirX * 0.6);
         const frontY = Math.floor(p.y + p.dirY * 0.6);
         if (w.map[frontX][frontY] === 3 && keysPressed.current['Space'] && !p.isClimbing) {
@@ -247,15 +254,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, setGameState, onUpda
       }
     }
 
-    // Entity Logic
     w.entities.forEach(entity => {
       const dist = Math.hypot(entity.x - p.x, entity.y - p.y);
       if (entity.type === 'KEY') {
-         if (dist < 0.5) { entity.x = -100; p.keysFound++; setMessage(`Found Key ${p.keysFound}/${TOTAL_KEYS}`); }
+         if (dist < 0.7) { entity.x = -100; p.keysFound++; setMessage(`Found Key ${p.keysFound}/${TOTAL_KEYS}`); }
       }
       else if (entity.type === 'EXIT') {
-          if (dist < 1.0 && p.keysFound >= TOTAL_KEYS) setGameState(GameState.VICTORY);
-          else if (dist < 1.0 && Math.random() > 0.95) setMessage("Need all keys to escape!");
+          if (dist < 1.2 && p.keysFound >= TOTAL_KEYS) setGameState(GameState.VICTORY);
+          else if (dist < 1.2 && Math.random() > 0.95) setMessage("Need all keys to escape!");
       }
     });
 
@@ -284,7 +290,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, setGameState, onUpda
     const imgData = ctx.createImageData(SCREEN_WIDTH, SCREEN_HEIGHT);
     const buffer = new Uint32Array(imgData.data.buffer);
     
-    // Fill Ceiling and Floor
     const horizon = Math.floor(SCREEN_HEIGHT / 2 + p.pitch);
     for (let y = 0; y < SCREEN_HEIGHT; y++) {
         const isSky = y < horizon;
@@ -303,7 +308,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, setGameState, onUpda
 
     const zBuffer: number[] = new Array(SCREEN_WIDTH).fill(0);
 
-    // Wall Casting
     for (let x = 0; x < SCREEN_WIDTH; x++) {
       const cameraX = 2 * x / SCREEN_WIDTH - 1;
       const rayDirX = p.dirX + p.planeX * cameraX;
@@ -325,9 +329,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, setGameState, onUpda
       else { stepY = 1; sideDistY = (mapY + 1.0 - p.y) * deltaDistY; }
 
       let wallType = 0;
-      // Safety break for larger maps to prevent infinite loop if escaped
       let steps = 0;
-      while (hit === 0 && steps < 100) {
+      // Increased step limit for larger map and wide corridors
+      while (hit === 0 && steps < 300) {
         if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; }
         else { sideDistY += deltaDistY; mapY += stepY; side = 1; }
         if(mapX < 0 || mapY < 0 || mapX >= MAP_SIZE || mapY >= MAP_SIZE) { hit = 1; }
@@ -343,7 +347,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, setGameState, onUpda
 
       zBuffer[x] = perpWallDist;
 
-      // Player Height Adjustment (Lowered by ~18% from 0.5 to 0.41)
       const camZ = 0.41 + p.z - (p.isCrouching ? 0.2 : 0);
       const lineHeight = Math.floor(SCREEN_HEIGHT / perpWallDist * WALL_HEIGHT_SCALE);
       const pitchOffset = p.pitch; 
@@ -369,8 +372,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, setGameState, onUpda
           
           let color = getTextureColor(wallType, texX, safeTexY, side);
           
-          if (perpWallDist > 5) {
-               const fog = Math.min(1, (perpWallDist - 5) / 20);
+          if (perpWallDist > 8) { // Fog distance adjusted for wider halls
+               const fog = Math.min(1, (perpWallDist - 8) / 30);
                if (fog > 0) {
                    const r = (color & 0xFF);
                    const g = (color >> 8) & 0xFF;
@@ -388,7 +391,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, setGameState, onUpda
     
     ctx.putImageData(imgData, 0, 0);
 
-    // --- SPRITES ---
     const spriteOrder = w.entities.map((e, i) => {
         return { 
             id: i, 
@@ -408,7 +410,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, setGameState, onUpda
         if (transformY <= 0) continue;
 
         const spriteScreenX = Math.floor((SCREEN_WIDTH / 2) * (1 + transformX / transformY));
-        const camZ = 0.41 + p.z - (p.isCrouching ? 0.2 : 0); // Matched player height
+        const camZ = 0.41 + p.z - (p.isCrouching ? 0.2 : 0);
         const spriteHeight = Math.abs(Math.floor(SCREEN_HEIGHT / transformY));
         const pitchOffset = p.pitch;
 
@@ -435,34 +437,4 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, setGameState, onUpda
                  
                  if (sprite.type === 'KEY') {
                     yS += h * 0.4; h *= 0.2; 
-                    if ((stripe + Date.now()/50)%20 < 10) ctx.fillStyle = '#fef08a';
-                 }
-                 ctx.fillRect(stripe, yS, 1, h);
-            }
-        }
-    }
-  };
-
-  const loop = (time: number) => {
-    update();
-    draw();
-    requestRef.current = requestAnimationFrame(loop);
-  };
-
-  useEffect(() => {
-    requestRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(requestRef.current);
-  }, [gameState]);
-
-  return (
-    <canvas 
-        ref={canvasRef} 
-        width={SCREEN_WIDTH} 
-        height={SCREEN_HEIGHT} 
-        onClick={handleCanvasClick}
-        className="w-full h-full object-contain bg-slate-900 shadow-2xl cursor-crosshair"
-    />
-  );
-};
-
-export default GameCanvas;
+                    if ((stripe + Date.now()/50)%20 < 10) ctx.fillStyle
