@@ -1,48 +1,33 @@
 export const SCREEN_WIDTH = 640;
 export const SCREEN_HEIGHT = 480;
-export const FOV = 1.032; // Increased by 20% (was 0.86)
-export const WALL_HEIGHT_SCALE = 4.0; 
+export const FOV = 1.032; 
+export const WALL_HEIGHT_SCALE = 5.0; // Higher walls for more looming feel
 
-// Map Codes: 
-// 0: Empty
-// 1: Concrete Wall
-// 2: Mossy Wall
-// 3: Vine Wall (Climbable)
-// 4: Locker (Start)
-// 5: Trap (Spikes)
-
-export const MAP_SIZE = 120; // Increased size to accommodate wider corridors
+export const MAP_SIZE = 120;
 export const TOTAL_KEYS = 3;
 
-// RGB colors for rendering
+// Desaturated Horror Colors (Matching the image vibe)
 export const COLORS = {
-  ground: [30, 41, 59], // Slate 800
-  ceiling: [15, 23, 42], // Slate 900
-  wall: [71, 85, 105], // Slate 600
-  wallDark: [51, 65, 85], // Slate 700
-  vine: [21, 128, 61], // Green 600
-  locker: [60, 60, 60], // Dark metal
-  trap: [127, 29, 29], // Red 900
-  griever: [0, 0, 0], // Pure black
-  key: [234, 179, 8], // Yellow 500
-  exit: [59, 130, 246], // Blue 500
+  ground: [18, 22, 25], 
+  ceiling: [25, 28, 32], 
+  wall: [45, 48, 52], 
+  wallDark: [30, 32, 35],
+  vine: [40, 50, 45], // Dark, almost grey-green
+  locker: [20, 22, 25],
+  trap: [40, 20, 20], 
+  griever: [0, 0, 0], 
+  key: [180, 180, 150], // Dull metallic
+  exit: [100, 110, 130], // Cold grey-blue
 };
 
-// Procedural Generation
 const generateLevel = () => {
     const size = MAP_SIZE;
-    // 1. Fill with walls
     const map = Array.from({ length: size }, () => Array(size).fill(1));
-    
-    // 2. Maze Generation with wider paths
-    // We use a larger step (4) to carve 3-wide corridors
     const startX = Math.floor(size / 2);
     const startY = Math.floor(size / 2);
-    
     const isValid = (x: number, y: number) => x > 2 && x < size - 3 && y > 2 && y < size - 3;
 
     const carve = (x: number, y: number) => {
-        // Carve a 3x3 block
         for(let ix = -1; ix <= 1; ix++) {
             for(let iy = -1; iy <= 1; iy++) {
                 if (x + ix >= 0 && x + ix < size && y + iy >= 0 && y + iy < size) {
@@ -54,33 +39,22 @@ const generateLevel = () => {
 
     const visit = (x: number, y: number) => {
         carve(x, y);
-        
-        // Step of 4 ensures walls exist between 3-wide corridors
         const dirs = [[0, -4], [0, 4], [-4, 0], [4, 0]].sort(() => Math.random() - 0.5);
-        
         for (const [dx, dy] of dirs) {
             const nx = x + dx;
             const ny = y + dy;
             if (isValid(nx, ny) && map[nx][ny] === 1) {
-                // Carve the path between nodes (midpoint)
-                const mx = x + dx / 2;
-                const my = y + dy / 2;
-                carve(mx, my);
-                // Also carve the bridge points for seamlessness
+                carve(x + dx / 2, y + dy / 2);
                 carve(x + dx / 4, y + dy / 4);
                 carve(x + 3 * dx / 4, y + 3 * dy / 4);
-                
                 visit(nx, ny);
             }
         }
     };
     
     visit(startX, startY);
-
-    // 3. Set Center Locker area
     map[startX][startY] = 4;
     
-    // 4. Add Loops (make it less linear, especially with wide paths)
     for (let i = 0; i < size * 3; i++) {
         const rx = Math.floor(Math.random() * (size - 6)) + 3;
         const ry = Math.floor(Math.random() * (size - 6)) + 3;
@@ -90,9 +64,7 @@ const generateLevel = () => {
              if (map[rx-1][ry] === 0) emptyNeighbors++;
              if (map[rx][ry+1] === 0) emptyNeighbors++;
              if (map[rx][ry-1] === 0) emptyNeighbors++;
-             
              if (emptyNeighbors >= 2) {
-                 // Carve a small 2x2 to open it up
                  map[rx][ry] = 0;
                  map[rx+1][ry] = 0;
                  map[rx][ry+1] = 0;
@@ -100,21 +72,15 @@ const generateLevel = () => {
         }
     }
 
-    // 5. Add Vines (Climbable walls)
     for(let x=1; x<size-1; x++) {
         for(let y=1; y<size-1; y++) {
-            if(map[x][y] === 1 && Math.random() > 0.92) {
-                if(map[x+1][y] === 0 || map[x-1][y] === 0 || map[x][y+1] === 0 || map[x][y-1] === 0) {
-                    map[x][y] = 3;
-                }
+            if(map[x][y] === 1 && Math.random() > 0.9) {
+                map[x][y] = (Math.random() > 0.5) ? 2 : 3;
             }
         }
     }
 
-    // 6. Generate Entities
     const entities = [];
-    
-    // Place Keys (Far from center)
     let keysPlaced = 0;
     while(keysPlaced < TOTAL_KEYS) {
         const rx = Math.floor(Math.random() * (size - 2)) + 1;
@@ -126,7 +92,6 @@ const generateLevel = () => {
         }
     }
 
-    // Place Exit (Very far)
     let exitPlaced = false;
     while(!exitPlaced) {
          const rx = Math.floor(Math.random() * (size - 2)) + 1;
