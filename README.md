@@ -19,6 +19,4 @@ View your app in AI Studio: https://ai.studio/apps/drive/1VEdg52TYZiHrwVMmwpJrAV
 3. Run the app:
    `npm run dev`
 
-
-[The Glade Runner demo #1]([https://example.com](https://youtu.be/uJEhhsgRqpA))
-<a href="https://example.com" target="_blank">Link Text</a>
+<a href="[https://example.com](https://example.com](https://youtu.be/uJEhhsgRqpA)" target="_blank">The Glade Runner demo #1</a>
