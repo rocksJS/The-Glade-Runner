@@ -21,3 +21,4 @@ View your app in AI Studio: https://ai.studio/apps/drive/1VEdg52TYZiHrwVMmwpJrAV
 
 
 [The Glade Runner demo #1]([https://example.com](https://youtu.be/uJEhhsgRqpA))
+<a href="https://example.com" target="_blank">Link Text</a>
